@@ -60,10 +60,10 @@ def get_profile(user = Depends(get_current_user)):
         # For MVP, let's just return 0 placeholders but explicitly in the API so frontend doesn't guess.
         
         profile["stats"] = {
-            "battle_wins": profile.get("overall_win_count", 0),
+            "battle_wins": profile.get("battle_win_count", 0),
             "total_xp": profile.get("total_xp_earned", 0),
-            "rounds_won": profile.get("daily_win_count", 0),
-            "win_rate": f"{profile.get('overall_win_rate', 0)}%",
+            "battle_fought": profile.get("battle_count", 0),
+            "win_rate": f"{profile.get('battle_win_rate', 0)}%",
             "tasks_completed": profile.get("completed_tasks", 0)
         }
         
@@ -72,7 +72,19 @@ def get_profile(user = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{identifier}/public_profile", operation_id="get_public_profile")
-def get_public_profile(identifier: str, current_user = Depends(get_current_user)):
+async def get_public_profile(identifier: str, current_user = Depends(get_current_user)):
+    """
+    Get public profile by username or UUID with retry logic for connection stability.
+    """
+    from database import retry_on_connection_error
+    
+    @retry_on_connection_error(max_retries=3, delay=0.3)
+    def fetch_profile_data(user_id: str):
+        """Fetch profile with retry on connection errors"""
+        return supabase.table("profiles").select(
+            "id, username, level, email, avatar_emoji, battle_win_count, total_xp_earned, battle_count, battle_win_rate, completed_tasks"
+        ).eq("id", user_id).single().execute()
+    
     try:
         # Determine if identifier is UUID or username
         # Try UUID format first
@@ -91,10 +103,8 @@ def get_public_profile(identifier: str, current_user = Depends(get_current_user)
         if not user_id:
             raise HTTPException(status_code=404, detail="User not found")
         
-        # Fetch Profile - select specific columns to avoid missing column errors
-        response = supabase.table("profiles").select(
-            "id, username, level, email, avatar_emoji, overall_win_count, total_xp_earned, daily_win_count, overall_win_rate, completed_tasks"
-        ).eq("id", user_id).single().execute()
+        # Fetch Profile with retry logic
+        response = fetch_profile_data(user_id)
         profile = response.data
         
         if not profile:
@@ -148,17 +158,17 @@ def get_public_profile(identifier: str, current_user = Depends(get_current_user)
             "avatar_emoji": profile.get('avatar_emoji', '😀'),  # Default to smiley
             "is_following": is_following,
             "stats": {
-                "battle_wins": profile.get("overall_win_count", 0),
+                "battle_wins": profile.get("battle_win_count", 0),
                 "total_xp": profile.get("total_xp_earned", 0),
-                "rounds_won": profile.get("daily_win_count", 0),
-                "win_rate": f"{profile.get('overall_win_rate', 0)}%",
+                "battle_fought": profile.get("battle_count", 0),
+                "win_rate": f"{profile.get('battle_win_rate', 0)}%",
                 "tasks_completed": profile.get("completed_tasks", 0)
             },
             "match_history": enriched_history
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Public profile error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-
