@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import {
-    Trophy, Flame, Shield, Zap, Check, Plus,
-    Clock, User, Lock, Upload, AlertTriangle, Flag
+    Shield, Zap, Check, Plus,
+    User, AlertTriangle, Flag
 } from 'lucide-react';
 import RivalRadar from '../components/RivalRadar';
 
@@ -24,12 +24,47 @@ export default function Dashboard() {
     const [battle, setBattle] = useState<any>(null);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
+    const [timeUntilBattle, setTimeUntilBattle] = useState<string>('');
 
     useEffect(() => {
         if (session?.access_token) {
             fetchDashboardData();
         }
     }, [session]);
+
+    // Countdown timer for pre-battle
+    useEffect(() => {
+        if (!battle || battle.app_state !== 'PRE_BATTLE') return;
+
+        const updateCountdown = () => {
+            const now = new Date();
+            const startDate = new Date(battle.start_date);
+            const diff = startDate.getTime() - now.getTime();
+
+            if (diff <= 0) {
+                setTimeUntilBattle('Starting now!');
+                return;
+            }
+
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+            if (days > 0) {
+                setTimeUntilBattle(`${days}d ${hours}h ${minutes}m`);
+            } else if (hours > 0) {
+                setTimeUntilBattle(`${hours}h ${minutes}m ${seconds}s`);
+            } else {
+                setTimeUntilBattle(`${minutes}m ${seconds}s`);
+            }
+        };
+
+        updateCountdown();
+        const interval = setInterval(updateCountdown, 1000);
+
+        return () => clearInterval(interval);
+    }, [battle]);
 
     const fetchDashboardData = async () => {
         try {
@@ -121,14 +156,7 @@ export default function Dashboard() {
     };
 
     return (
-        <div className="min-h-screen bg-neo-bg p-4 md:p-8 pb-48 flex flex-col items-center">
-            {/* Desktop Sidebar (Hidden on Mobile) */}
-            <div className="hidden md:flex flex-col fixed left-0 top-0 bottom-0 w-64 bg-neo-white border-r-3 border-black p-6 z-40">
-                <div className="flex items-center gap-3 font-black italic uppercase text-xl tracking-tighter mb-10">
-                    <img src="/logo.svg" alt="Logo" className="w-10 h-10" />
-                    <span>Productivity<span className="text-neo-primary">GO</span></span>
-                </div>
-            </div>
+        <main className="min-h-screen bg-neo-bg p-4 md:p-8 pb-48 flex flex-col items-center">
             {/* Header */}
             <header className="w-full max-w-3xl flex justify-between items-center mb-8">
                 <div className="bg-neo-white border-3 border-black p-4 shadow-neo-sm">
@@ -158,7 +186,11 @@ export default function Dashboard() {
                     <h2 className="text-2xl font-black uppercase mb-2 flex items-center justify-center gap-2">
                         <AlertTriangle className="w-8 h-8" /> Battle Pending
                     </h2>
-                    <p className="font-bold">The battle begins tomorrow! Prepare your protocols.</p>
+                    <p className="font-bold mb-1">The battle begins in</p>
+                    <div className="text-3xl font-black text-neo-primary mb-2">
+                        {timeUntilBattle || 'Loading...'}
+                    </div>
+                    <p className="font-bold text-sm">Prepare your protocols.</p>
                 </div>
             )}
 
