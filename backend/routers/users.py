@@ -16,6 +16,7 @@ class UserUpdate(BaseModel):
     username: Optional[str] = None
     avatar_url: Optional[str] = None
     avatar_emoji: Optional[str] = None
+    timezone: Optional[str] = None
 
 from dependencies import get_current_user
 
@@ -26,6 +27,9 @@ def update_profile(update_data: UserUpdate, user = Depends(get_current_user)):
         data = {}
         if update_data.username:
             data["username"] = update_data.username
+            
+        if update_data.timezone:
+            data["timezone"] = update_data.timezone
             
         if update_data.avatar_emoji:
             # Validate emoji is in allowed list
@@ -41,9 +45,10 @@ def update_profile(update_data: UserUpdate, user = Depends(get_current_user)):
         if not data:
             return {"message": "No changes provided"}
 
-        # Use upsert to ensure profile exists
-        data["id"] = user.id
-        response = supabase.table("profiles").upsert(data).execute()
+        # Use update instead of upsert to be safer and strictly scope to user.id
+        # Upsert might create a new row if ID doesn't exist (which shouldn't happen for profile update),
+        # but explicit update with eq() is safer to prevent accidental cross-user updates.
+        response = supabase.table("profiles").update(data).eq("id", user.id).execute()
         return response.data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
