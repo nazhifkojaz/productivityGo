@@ -11,6 +11,8 @@ import PublicProfile from './pages/PublicProfile';
 import { OpenAPI } from './api';
 import { Toaster } from 'sonner';
 
+import TimezoneSync from './components/TimezoneSync';
+
 // Protected Route Wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading } = useAuth();
@@ -25,7 +27,12 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (loading) return <div className="h-screen flex items-center justify-center font-black text-2xl">LOADING...</div>;
   if (!session) return <Navigate to="/login" />;
-  return <>{children}</>;
+  return (
+    <>
+      <TimezoneSync />
+      {children}
+    </>
+  );
 };
 
 // Battle Router Wrapper

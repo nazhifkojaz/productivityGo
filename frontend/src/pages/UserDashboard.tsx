@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Search, Swords, Shield, Trophy, Star, Target, Mail, Loader, Users, User } from 'lucide-react';
 import { toast } from 'sonner';
+import RankBadge from '../components/RankBadge';
 
 export default function UserDashboard() {
     const { session } = useAuth();
@@ -26,19 +27,41 @@ export default function UserDashboard() {
     const [loading, setLoading] = useState(false);
     const [inviteStatus, setInviteStatus] = useState<string | null>(null);
 
+
+    // Load all data in parallel for faster page load
+    const loadAllData = async () => {
+        try {
+            const [profileRes, invitesRes, followingRes, followersRes] = await Promise.all([
+                axios.get('/api/users/profile', {
+                    headers: { Authorization: `Bearer ${session?.access_token}` }
+                }),
+                axios.get('/api/battles/invites', {
+                    headers: { Authorization: `Bearer ${session?.access_token}` }
+                }),
+                axios.get('/api/social/following', {
+                    headers: { Authorization: `Bearer ${session?.access_token}` }
+                }),
+                axios.get('/api/social/followers', {
+                    headers: { Authorization: `Bearer ${session?.access_token}` }
+                })
+            ]);
+
+            setProfile(profileRes.data);
+            setInvites(invitesRes.data);
+            setFollowing(followingRes.data);
+            setFollowers(followersRes.data);
+        } catch (error) {
+            console.error("Failed to load data", error);
+        }
+    };
+
     useEffect(() => {
         if (session?.access_token) {
-            loadData();
+            loadAllData();
         }
     }, [session]);
 
-    const loadData = async () => {
-        loadProfile();
-        loadInvites();
-        loadFollowing();
-        loadFollowers();
-    };
-
+    // Keep individual loaders for manual refresh
     const loadProfile = async () => {
         try {
             const response = await axios.get('/api/users/profile', {
@@ -102,20 +125,29 @@ export default function UserDashboard() {
         }
     };
 
-    const handleSearch = async (query: string) => {
-        setSearchQuery(query);
-        if (query.length < 2) {
+    // Debounced search to prevent API spam
+    useEffect(() => {
+        if (searchQuery.length < 2) {
             setSearchResults([]);
             return;
         }
-        try {
-            const response = await axios.get(`/api/social/search?q=${query}`, {
-                headers: { Authorization: `Bearer ${session?.access_token}` }
-            });
-            setSearchResults(response.data);
-        } catch (error) {
-            console.error("Search failed", error);
-        }
+
+        const timer = setTimeout(async () => {
+            try {
+                const response = await axios.get(`/api/social/search?q=${searchQuery}`, {
+                    headers: { Authorization: `Bearer ${session?.access_token}` }
+                });
+                setSearchResults(response.data);
+            } catch (error) {
+                console.error("Search failed", error);
+            }
+        }, 300); // 300ms debounce
+
+        return () => clearTimeout(timer);
+    }, [searchQuery, session]);
+
+    const handleSearch = (query: string) => {
+        setSearchQuery(query);
     };
 
     const handleInvite = async () => {
@@ -240,9 +272,7 @@ export default function UserDashboard() {
                             </div>
                             <div>
                                 <h2 className="text-2xl font-black uppercase hover:underline">{profile?.username || 'User'}</h2>
-                                <div className="bg-neo-primary px-2 py-0.5 text-xs font-bold border-2 border-black inline-block">
-                                    LEVEL {profile?.level || 1}
-                                </div>
+                                {profile?.rank && <RankBadge rank={profile.rank} level={profile.level} size="small" showLabel={false} />}
                             </div>
                         </div>
 
@@ -508,7 +538,7 @@ function UserListItem({ user, onProfile, isFollowing, onFollowToggle }: any) {
                 </div>
                 <div>
                     <div className="font-black text-lg hover:underline">{user.username}</div>
-                    <div className="text-xs font-bold text-gray-500">Level {user.level}</div>
+                    {user.rank && <RankBadge rank={user.rank} level={user.level} size="small" showLabel={false} />}
                 </div>
             </div>
             <button

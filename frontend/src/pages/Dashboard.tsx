@@ -290,20 +290,22 @@ export default function Dashboard() {
             </div>
 
             {/* Danger Zone: Surrender */}
-            {!isPending && (
-                <div className="w-full max-w-3xl mt-8 mb-12 flex justify-center">
-                    <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={handleForfeit}
-                        className="flex items-center gap-2 px-6 py-3 bg-red-500 text-white font-bold border-3 border-black shadow-neo hover:bg-red-600 transition-colors"
-                        title="Surrender Battle"
-                    >
-                        <Flag className="w-5 h-5 fill-white" />
-                        SURRENDER
-                    </motion.button>
-                </div>
-            )}
-        </main>
+            {
+                !isPending && (
+                    <div className="w-full max-w-3xl mt-8 mb-12 flex justify-center">
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={handleForfeit}
+                            className="flex items-center gap-2 px-6 py-3 bg-red-500 text-white font-bold border-3 border-black shadow-neo hover:bg-red-600 transition-colors"
+                            title="Surrender Battle"
+                        >
+                            <Flag className="w-5 h-5 fill-white" />
+                            SURRENDER
+                        </motion.button>
+                    </div>
+                )
+            }
+        </main >
     );
 }

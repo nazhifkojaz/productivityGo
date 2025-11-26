@@ -246,6 +246,41 @@ export default function Profile() {
                             </motion.div>
                         )}
 
+                        {/* Timezone Sync */}
+                        <div className="bg-white border-3 border-black p-4">
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-bold">🌍 Timezone</span>
+                                    <span className="text-gray-600">{profileData?.timezone || 'UTC'}</span>
+                                </div>
+                                <button
+                                    onClick={async () => {
+                                        if (!session?.access_token) return;
+                                        const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                                        setLoading(true);
+                                        try {
+                                            await axios.put('/api/users/profile',
+                                                { timezone: detectedTimezone },
+                                                { headers: { Authorization: `Bearer ${session.access_token}` } }
+                                            );
+                                            toast.success(`Timezone updated to ${detectedTimezone}`);
+                                            loadProfile();
+                                        } catch (error) {
+                                            toast.error("Failed to update timezone");
+                                        } finally {
+                                            setLoading(false);
+                                        }
+                                    }}
+                                    className="btn-neo bg-neo-accent px-4 py-2 font-bold text-sm uppercase hover:bg-yellow-400 transition-colors"
+                                >
+                                    Sync to Device
+                                </button>
+                            </div>
+                            <p className="text-xs text-gray-500 font-bold">
+                                Automatically detected: {Intl.DateTimeFormat().resolvedOptions().timeZone}
+                            </p>
+                        </div>
+
                         <button
                             onClick={() => signOut()}
                             className="w-full bg-red-400 border-3 border-black p-4 font-bold uppercase hover:bg-red-500 flex items-center justify-center gap-2 shadow-sm hover:shadow-none hover:translate-y-0.5 transition-all"
