@@ -48,53 +48,73 @@ def unfollow_user(user_id: str, current_user = Depends(get_current_user)):
 
 @router.get("/following", response_model=List[UserProfile])
 def get_following(current_user = Depends(get_current_user)):
-    # Get IDs of users I follow
-    follows = supabase.table("follows").select("following_id").eq("follower_id", current_user.id).execute()
-    if not follows.data:
-        return []
+    from database import retry_on_connection_error
     
-    following_ids = [f['following_id'] for f in follows.data]
+    @retry_on_connection_error(max_retries=3, delay=0.3)
+    def fetch_following():
+        # Get IDs of users I follow
+        follows = supabase.table("follows").select("following_id").eq("follower_id", current_user.id).execute()
+        if not follows.data:
+            return []
+        
+        following_ids = [f['following_id'] for f in follows.data]
+        
+        # Get profiles with specific columns only
+        profiles = supabase.table("profiles").select("id, username, level, total_xp_earned, battle_win_count, battle_count, avatar_emoji").in_("id", following_ids).execute()
+        
+        # Build response with only needed fields
+        result = []
+        for profile in profiles.data:
+            result.append({
+                'id': profile['id'],
+                'username': profile.get('username', 'Unknown'),
+                'level': profile.get('level', 1),
+                'avatar_url': None,
+                'avatar_emoji': profile.get('avatar_emoji', '😀')
+            })
+        
+        return result
     
-    # Get profiles - select * to avoid column specification issues
-    profiles = supabase.table("profiles").select("*").in_("id", following_ids).execute()
-    
-    # Build response with only needed fields
-    result = []
-    for profile in profiles.data:
-        result.append({
-            'id': profile['id'],
-            'username': profile.get('username', 'Unknown'),
-            'level': profile.get('level', 1),
-            'avatar_url': None,
-            'avatar_emoji': profile.get('avatar_emoji', '😀')
-        })
-    
-    return result
+    try:
+        return fetch_following()
+    except Exception as e:
+        print(f"Error in get_following: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/followers", response_model=List[UserProfile])
 def get_followers(current_user = Depends(get_current_user)):
-    # Get IDs of users following me
-    followers = supabase.table("follows").select("follower_id").eq("following_id", current_user.id).execute()
-    if not followers.data:
-        return []
+    from database import retry_on_connection_error
     
-    follower_ids = [f['follower_id'] for f in followers.data]
+    @retry_on_connection_error(max_retries=3, delay=0.3)
+    def fetch_followers():
+        # Get IDs of users following me
+        followers = supabase.table("follows").select("follower_id").eq("following_id", current_user.id).execute()
+        if not followers.data:
+            return []
+        
+        follower_ids = [f['follower_id'] for f in followers.data]
+        
+        # Get profiles
+        profiles = supabase.table("profiles").select("id, username, level, total_xp_earned, battle_win_count, battle_count, avatar_emoji").in_("id", follower_ids).execute()
+        
+        # Build response with only needed fields
+        result = []
+        for profile in profiles.data:
+            result.append({
+                'id': profile['id'],
+                'username': profile.get('username', 'Unknown'),
+                'level': profile.get('level', 1),
+                'avatar_url': None,
+                'avatar_emoji': profile.get('avatar_emoji', '😀')
+            })
+        
+        return result
     
-    # Get profiles - select * to avoid column specification issues
-    profiles = supabase.table("profiles").select("*").in_("id", follower_ids).execute()
-    
-    # Build response with only needed fields
-    result = []
-    for profile in profiles.data:
-        result.append({
-            'id': profile['id'],
-            'username': profile.get('username', 'Unknown'),
-            'level': profile.get('level', 1),
-            'avatar_url': None,
-            'avatar_emoji': profile.get('avatar_emoji', '😀')
-        })
-    
-    return result
+    try:
+        return fetch_followers()
+    except Exception as e:
+        print(f"Error in get_followers: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/search", response_model=List[UserProfile])
 def search_users(q: str, current_user = Depends(get_current_user)):
@@ -102,7 +122,7 @@ def search_users(q: str, current_user = Depends(get_current_user)):
         return []
     
     # Search by username, exclude self - select * to avoid column issues
-    profiles = supabase.table("profiles").select("*")\
+    profiles = supabase.table("profiles").select("id, username, level, total_xp_earned, battle_win_count, battle_count, avatar_emoji")\
         .ilike("username", f"%{q}%")\
         .neq("id", current_user.id)\
         .limit(10)\
