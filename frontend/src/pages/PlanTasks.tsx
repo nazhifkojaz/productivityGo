@@ -6,17 +6,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
+import { useProfile } from '../hooks/useProfile';
 
 export default function PlanTasks() {
     const navigate = useNavigate();
     const { session } = useAuth();
+    const { data: profile } = useProfile();
     const [mandatoryTasks, setMandatoryTasks] = useState<string[]>([]);
     const [optionalTasks, setOptionalTasks] = useState<string[]>(['', '']);
     const [quota, setQuota] = useState<number>(0);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [timeLeft, setTimeLeft] = useState<string>("");
-    const [userTimezone, setUserTimezone] = useState<string>("UTC");
+
+    const userTimezone = profile?.timezone || 'UTC';
 
     useEffect(() => {
         if (session?.access_token) {
@@ -54,12 +57,6 @@ export default function PlanTasks() {
     const loadData = async () => {
         if (!session?.access_token) return;
         try {
-            // 0. Get user profile for timezone
-            const profileRes = await axios.get('/api/users/profile', {
-                headers: { Authorization: `Bearer ${session.access_token}` }
-            });
-            setUserTimezone(profileRes.data.timezone || 'UTC');
-
             // 1. Get Quota
             const quotaRes = await axios.get('/api/tasks/quota', {
                 headers: { Authorization: `Bearer ${session.access_token}` }

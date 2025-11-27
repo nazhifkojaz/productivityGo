@@ -1,18 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { Shield, Swords, ArrowLeft, Trophy, Star, Target, X, Loader, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import RankBadge from '../components/RankBadge';
+import { usePublicProfile } from '../hooks/usePublicProfile';
+import { useSocialMutations } from '../hooks/useSocialMutations';
 
 export default function PublicProfile() {
     const { userId } = useParams();
     const { session, user } = useAuth();
     const navigate = useNavigate();
-    const [profile, setProfile] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
-    const [followLoading, setFollowLoading] = useState(false);
+    const { data: profile, isLoading: loading } = usePublicProfile(userId);
+    const { followMutation, unfollowMutation } = useSocialMutations();
 
     // Challenge Modal State
     const [showChallengeModal, setShowChallengeModal] = useState(false);
@@ -20,46 +21,20 @@ export default function PublicProfile() {
     const [duration, setDuration] = useState(5);
     const [sendingInvite, setSendingInvite] = useState(false);
 
-    useEffect(() => {
-        if (userId && session?.access_token) {
-            fetchPublicProfile();
-        }
-    }, [userId, session]);
 
-    const fetchPublicProfile = async () => {
-        try {
-            const response = await axios.get(`/api/users/${userId}/public_profile`, {
-                headers: { Authorization: `Bearer ${session?.access_token}` }
-            });
-            setProfile(response.data);
-        } catch (error) {
-            console.error("Failed to fetch profile", error);
-            // navigate('/dashboard'); // Optional: redirect on error
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const handleFollowToggle = async () => {
         if (!profile) return;
-        setFollowLoading(true);
         try {
             if (profile.is_following) {
-                await axios.delete(`/api/social/unfollow/${profile.id}`, {
-                    headers: { Authorization: `Bearer ${session?.access_token}` }
-                });
+                await unfollowMutation.mutateAsync(profile.id);
             } else {
-                await axios.post(`/api/social/follow/${profile.id}`, {}, {
-                    headers: { Authorization: `Bearer ${session?.access_token}` }
-                });
+                await followMutation.mutateAsync(profile.id);
             }
-            // Refresh profile to update status
-            fetchPublicProfile();
+            toast.success(profile.is_following ? "Unfollowed!" : "Followed!");
         } catch (error) {
             console.error('Failed to update follow status', error);
             toast.error("Failed to update follow status");
-        } finally {
-            setFollowLoading(false);
         }
     };
 
@@ -151,7 +126,6 @@ export default function PublicProfile() {
                                     <>
                                         <button
                                             onClick={handleFollowToggle}
-                                            disabled={followLoading}
                                             className={`px-6 py-2 font-bold border-3 border-black shadow-neo-sm transition-all active:translate-y-1 active:shadow-none ${profile.is_following ? 'bg-gray-300' : 'bg-neo-accent'
                                                 }`}
                                         >

@@ -7,55 +7,29 @@ import { Trophy, ArrowLeft, Swords, Target, Star, Calendar, Home, RefreshCw } fr
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import RankBadge from '../components/RankBadge';
+import { useBattleDetails } from '../hooks/useBattleDetails';
+import { usePendingRematch } from '../hooks/usePendingRematch';
 
 export default function BattleResult() {
     const { battleId } = useParams();
     const { session, user } = useAuth();
     const navigate = useNavigate();
-    const [battle, setBattle] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
-    const [pendingRematch, setPendingRematch] = useState<any>(null);
+    const { data: battle, isLoading: loading } = useBattleDetails(battleId);
+    const { data: pendingRematch } = usePendingRematch(battleId);
 
+    // Trigger confetti on win
     useEffect(() => {
-        if (battleId && session?.access_token) {
-            fetchResult();
-            checkPendingRematch();
-        }
-    }, [battleId, session]);
-
-    const fetchResult = async () => {
-        try {
-            const res = await axios.get(`/api/battles/${battleId}`, {
-                headers: { Authorization: `Bearer ${session?.access_token} ` }
+        if (battle && battle.winner_id === user?.id) {
+            confetti({
+                particleCount: 150,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#FFD700', '#FFA500', '#FF4500']
             });
-            setBattle(res.data);
-
-            // Trigger confetti if user won
-            if (res.data.winner_id === user?.id) {
-                confetti({
-                    particleCount: 150,
-                    spread: 70,
-                    origin: { y: 0.6 },
-                    colors: ['#FFD700', '#FFA500', '#FF4500']
-                });
-            }
-        } catch (error) {
-            console.error("Failed to fetch battle result", error);
-        } finally {
-            setLoading(false);
         }
-    };
+    }, [battle, user]);
 
-    const checkPendingRematch = async () => {
-        try {
-            const res = await axios.get(`/api/battles/${battleId}/pending-rematch`, {
-                headers: { Authorization: `Bearer ${session?.access_token}` }
-            });
-            setPendingRematch(res.data);
-        } catch (error) {
-            console.error("Failed to check pending rematch", error);
-        }
-    };
+
 
     const handleEndCampaign = async () => {
         if (!confirm("End this campaign and return to lobby?")) return;
