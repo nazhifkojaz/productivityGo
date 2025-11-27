@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/productivityGo/', // Change this to your repository name
+  base: '/productivitygo/', // Change this to your repository name
   plugins: [react()],
   server: {
     proxy: {
