@@ -18,8 +18,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading } = useAuth();
 
   useEffect(() => {
-    // Set API Base URL to relative path (proxied by Vite)
-    OpenAPI.BASE = "/api";
+    // Set API Base URL
+    OpenAPI.BASE = import.meta.env.VITE_API_URL || "/api";
     if (session?.access_token) {
       OpenAPI.TOKEN = session.access_token;
     }
