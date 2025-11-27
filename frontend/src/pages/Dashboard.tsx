@@ -22,7 +22,7 @@ interface Task {
 export default function Dashboard() {
     const { session, user } = useAuth();
     const navigate = useNavigate();
-    const { data: battle, isLoading, error } = useCurrentBattle();
+    const { data: battle, isLoading } = useCurrentBattle();
     const [tasks, setTasks] = useState<Task[]>([]);
     const [timeUntilBattle, setTimeUntilBattle] = useState<string>('');
 

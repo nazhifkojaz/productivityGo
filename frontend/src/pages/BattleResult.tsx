@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import confetti from 'canvas-confetti';
-import { Trophy, ArrowLeft, Swords, Target, Star, Calendar, Home, RefreshCw } from 'lucide-react';
+import { Calendar, Home, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import RankBadge from '../components/RankBadge';
